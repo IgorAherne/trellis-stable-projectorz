@@ -34,16 +34,17 @@ Below is a clean, step-by-step set of instructions to set up a working environme
    
 
 4. **Install PyTorch 2.4.0 with CUDA 11.8**  
+	2.4.0 is needed because xformers for windows is using 2.4.0 by default. It would downgrade torch back to 2.4.0 anyway.
    Use the official PyTorch index:  
    
    pip install torch==2.4.0 torchvision==0.19.0 torchaudio==2.4.0 --index-url https://download.pytorch.org/whl/cu118
    
-   2.4.0 is needed because xformers for windows is using 2.4.0 by default. It would downgrade torch back to 2.4.0 anyway.
+   
    
    
 5. **Install xformers (CUDA 11.8)**  
    
-   pip install xformers=0.0.27.post2 --index-url https://download.pytorch.org/whl/cu118
+   pip install xformers==0.0.27.post2 --index-url https://download.pytorch.org/whl/cu118
    
 
 
@@ -59,34 +60,45 @@ Below is a clean, step-by-step set of instructions to set up a working environme
    pip install kaolin==0.17.0 -f https://nvidia-kaolin.s3.us-east-2.amazonaws.com/torch-2.4.0_cu118.html
    
    This ensures compatibility with FlexiCubes from Kaolin.
+   
 
 8. **Install spconv for CUDA 11.8**  
    
    pip install spconv-cu118
    
    If this fails to find a wheel, ensure your Python and CUDA versions match their supported matrix. The above is their documented approach for prebuilt spconv wheels.
+   
 
-9. **FlexiCubes**  
+9.  Install nvdiffrast
+	git clone https://github.com/NVlabs/nvdiffrast.git ./tmp/extensions/nvdiffrast
+	pip install ./tmp/extensions/nvdiffrast
+	
+	
+
+10. **FlexiCubes**  
    TRELLIS’s code references a local `flexicubes` directory, but we want the version from Kaolin.  
    - In `cube2mesh.py` (or where FlexiCubes is imported), remove or comment out local imports and use:
      python
      from kaolin.non_commercial import FlexiCubes
      
    - Ensure no other code references the local `flexicubes` directory.
+   
 
-10. **Optional: Triton**  
+11. **Optional: Triton**  
     Triton is only for optimization. If you get a warning like "A matching Triton is not available," ignore it or try:  
     
     pip install triton
     
     If it’s not available for your setup, it’s safe to skip.
 
-11. **Run the Example**  
+
+12. **Run the Example**  
     Now try:
     
     python example.py
     
     If everything was installed correctly, the pipeline should run without import errors.
+
 
 **In Summary:**  
 - Use Python 3.11, PyTorch 2.4.0 with CUDA 11.8 so that xformers will work properly, and won't cause pytorch version to be changed.
