@@ -3,7 +3,7 @@ from ...modules.sparse import SparseTensor
 from easydict import EasyDict as edict
 from .utils_cube import *
 try:
-    from .flexicubes.flexicubes import FlexiCubes
+    from kaolin.non_commercial import FlexiCubes
 except:
     print("Please install kaolin and diso to use the mesh extractor.")
 
