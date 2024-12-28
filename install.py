@@ -118,6 +118,12 @@ def install_dependencies():
         "Installing diff_gaussian_rasterization from local wheel"
     )
 
+    # install gradio for web app
+    run_command(
+        f"pip install gradio==4.44.1 gradio_litmodel3d==0.0.1",
+        "Installing gradio for web app"
+    )
+
 
 if __name__ == "__main__":
     install_dependencies()
