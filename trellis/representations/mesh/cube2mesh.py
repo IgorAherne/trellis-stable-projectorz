@@ -1,4 +1,3 @@
-import torch
 from ...modules.sparse import SparseTensor
 from easydict import EasyDict as edict
 from .utils_cube import *
