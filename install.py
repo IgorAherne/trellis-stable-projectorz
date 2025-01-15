@@ -40,9 +40,9 @@ def get_git_env() -> dict:
     """
     env = os.environ.copy()
     
-    # Example location: your portable Git might be in system/git
+    # Example location: your portable Git might be in tools/git
     # Adjust if your structure is different
-    PORTABLE_GIT_BASE = os.path.join(os.path.dirname(__file__), "..", "system", "git")
+    PORTABLE_GIT_BASE = os.path.join(os.path.dirname(__file__), "..", "tools", "git")
     
     # Prepend the portable Git folders to PATH (like in update.bat)
     # Make sure these subfolders actually exist in your MinGit layout:
