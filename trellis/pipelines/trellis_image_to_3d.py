@@ -88,62 +88,34 @@ class TrellisImageTo3DPipeline(Pipeline):
 
 
     def preprocess_image(self, input: Image.Image) -> Image.Image:
-        """ Preprocess the input image. """
-        def resize_with_aspect(img, max_dim):
+        """Preprocess the input image."""
+        # Aspect-ratio-preserving resize helper
+        def resize_with_aspect(img: Image.Image, max_dim: int) -> Image.Image:
             aspect = img.size[0] / img.size[1]
             if img.size[0] > img.size[1]:
                 return img.resize((max_dim, int(max_dim / aspect)), Image.Resampling.LANCZOS)
             else:
                 return img.resize((int(max_dim * aspect), max_dim), Image.Resampling.LANCZOS)
-        
+
         # 1) Force max dimension 1024 BEFORE background removal
         if max(input.size) > 1024:
-            scale = 1024 / max(input.size)
-            new_w = int(input.width * scale)
-            new_h = int(input.height * scale)
-            input = input.resize((new_w, new_h), Image.Resampling.LANCZOS)
-        
-        # Check if the image has an alpha channel and whether to use it directly, else remove background
+            input = resize_with_aspect(input, 1024)
+
+        # if has alpha channel, use it directly; otherwise, remove background
         has_alpha = False
         if input.mode == 'RGBA':
             alpha = np.array(input)[:, :, 3]
             if not np.all(alpha == 255):
                 has_alpha = True
+        if has_alpha:
+            output = input
+        else:
+            input = input.convert('RGB')
+            # But we already clamped the size above, so no need to clamp here again
+            if getattr(self, 'rembg_session', None) is None:
+                self.rembg_session = rembg.new_session('u2net', providers=["CPUExecutionProvider"])  # drastically reduces VRAM by running on CPU
+            output = rembg.remove(input, session=self.rembg_session)
 
-        if not has_alpha:
-            model = AutoModelForImageSegmentation.from_pretrained('briaai/RMBG-2.0', trust_remote_code=True)
-            torch.set_float32_matmul_precision(['high', 'highest'][0])
-            model.to('cuda')
-            model.eval()
-
-            # Data settings
-            max_size = 1024
-            # Convert to RGB before applying transforms
-            transform_image = transforms.Compose([
-                transforms.Lambda(lambda img: img.convert('RGB')),
-                transforms.Lambda(lambda img: resize_with_aspect(img, max_size)),  # Custom resize that preserves aspect ratio
-                transforms.ToTensor(),
-                transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-            ])
-
-            # Ensure image is in RGB mode for prediction
-            input_rgb = input.convert('RGB')
-            input_images = transform_image(input_rgb).unsqueeze(0).to('cuda')
-
-            # Prediction
-            with torch.no_grad():
-                preds = model(input_images)[-1].sigmoid().cpu()
-            pred = preds[0].squeeze()
-            pred_pil = transforms.ToPILImage()(pred)
-            mask = pred_pil.resize(input.size)
-            input.putalpha(mask)
-
-            torch.cuda.empty_cache()
-            del model
-
-        output = input
-
-        # Crop and resize based on alpha channel after background removal
         output_np = np.array(output)
         alpha = output_np[:, :, 3]
         bbox = np.argwhere(alpha > 0.8 * 255)
@@ -154,13 +126,11 @@ class TrellisImageTo3DPipeline(Pipeline):
         bbox = center[0] - size // 2, center[1] - size // 2, center[0] + size // 2, center[1] + size // 2
         output = output.crop(bbox)  # type: ignore
         output = output.resize((518, 518), Image.Resampling.LANCZOS)
-
-        # Blend RGB and alpha channels and normalize the result
         output = np.array(output).astype(np.float32) / 255
         output = output[:, :, :3] * output[:, :, 3:4]
         output = Image.fromarray((output * 255).astype(np.uint8))
-
         return output
+
 
     @torch.no_grad()
     def encode_image(self, image: Union[torch.Tensor, list[Image.Image]]) -> torch.Tensor:
