@@ -96,7 +96,6 @@ class TrellisImageTo3DPipeline(Pipeline):
                 return img.resize((max_dim, int(max_dim / aspect)), Image.Resampling.LANCZOS)
             else:
                 return img.resize((int(max_dim * aspect), max_dim), Image.Resampling.LANCZOS)
-
         # 1) Force max dimension 1024 BEFORE background removal
         if max(input.size) > 1024:
             input = resize_with_aspect(input, 1024)
