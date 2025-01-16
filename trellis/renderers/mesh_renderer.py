@@ -1,9 +1,18 @@
 import torch
-import nvdiffrast.torch as dr
+import torch.nn.functional as F
 from easydict import EasyDict as edict
 from ..representations.mesh import MeshExtractResult
-import torch.nn.functional as F
-
+from pytorch3d.structures import Meshes
+from pytorch3d.renderer import (
+    PerspectiveCameras,
+    RasterizationSettings,
+    MeshRenderer as P3DMeshRenderer,
+    MeshRasterizer,
+    SoftPhongShader,
+    TexturesVertex,
+    interpolate_face_attributes
+)
+from pytorch3d.ops import vertex_normals
 
 def intrinsics_to_projection(
         intrinsics: torch.Tensor,
@@ -12,13 +21,12 @@ def intrinsics_to_projection(
     ) -> torch.Tensor:
     """
     OpenCV intrinsics to OpenGL perspective matrix
-
     Args:
-        intrinsics (torch.Tensor): [3, 3] OpenCV intrinsics matrix
-        near (float): near plane to clip
-        far (float): far plane to clip
+        intrinsics: [3, 3] OpenCV intrinsics matrix
+        near: near plane to clip
+        far: far plane to clip
     Returns:
-        (torch.Tensor): [4, 4] OpenGL perspective matrix
+        [4, 4] OpenGL perspective matrix
     """
     fx, fy = intrinsics[0, 0], intrinsics[1, 1]
     cx, cy = intrinsics[0, 2], intrinsics[1, 2]
@@ -32,107 +40,188 @@ def intrinsics_to_projection(
     ret[3, 2] = 1.
     return ret
 
-
 class MeshRenderer:
-    """
-    Renderer for the Mesh representation.
-
-    Args:
-        rendering_options (dict): Rendering options.
-        glctx (nvdiffrast.torch.RasterizeGLContext): RasterizeGLContext object for CUDA/OpenGL interop.
+    def __init__(self, rendering_options=None, device='cuda'):
+        """Initialize renderer with given options
+        
+        Args:
+            rendering_options: Dictionary of rendering settings
+            device: Device to use for rendering
         """
-    def __init__(self, rendering_options={}, device='cuda'):
         self.rendering_options = edict({
             "resolution": None,
-            "near": None,
-            "far": None,
-            "ssaa": 1
+            "near": 0.1,
+            "far": 1000.0,
+            "ssaa": 1,
+            "blur_radius": 0.0
         })
-        self.rendering_options.update(rendering_options)
-        self.glctx = dr.RasterizeCudaContext(device=device)
-        self.device=device
+        if rendering_options is not None:
+            self.rendering_options.update(rendering_options)
         
+        self.device = device
+        
+        self.raster_settings = RasterizationSettings(
+            image_size=self.rendering_options.resolution,
+            blur_radius=self.rendering_options.blur_radius,
+            faces_per_pixel=1,
+            perspective_correct=True,
+            clip_barycentric_coords=True,
+            cull_backfaces=True,
+            max_faces_per_bin=None,
+            bin_size=None
+        )
+        
+        self.rasterizer = MeshRasterizer(
+            raster_settings=self.raster_settings
+        )
+        
+        self.shader = SoftPhongShader(
+            device=device,
+            lights=None,
+            cameras=None
+        )
+    
+    def antialias(self, img: torch.Tensor, fragments) -> torch.Tensor:
+        """Apply antialiasing using weighted interpolation
+        
+        Args:
+            img: Image tensor to antialias
+            fragments: Rasterization fragments containing barycentric coordinates
+            
+        Returns:
+            Antialiased image tensor
+        """
+        weights = fragments.bary_coords[..., 0]
+        return (img * weights.unsqueeze(-1)).sum(dim=-2)
+    
+    @torch.cuda.amp.autocast()
     def render(
             self,
-            mesh : MeshExtractResult,
+            mesh: MeshExtractResult,
             extrinsics: torch.Tensor,
             intrinsics: torch.Tensor,
-            return_types = ["mask", "normal", "depth"]
+            return_types=["mask", "normal", "depth"]
         ) -> edict:
         """
-        Render the mesh.
-
+        Render mesh using PyTorch3D
+        
         Args:
-            mesh : meshmodel
-            extrinsics (torch.Tensor): (4, 4) camera extrinsics
-            intrinsics (torch.Tensor): (3, 3) camera intrinsics
-            return_types (list): list of return types, can be "mask", "depth", "normal_map", "normal", "color"
-
+            mesh: Mesh model to render
+            extrinsics: [4, 4] camera extrinsics matrix
+            intrinsics: [3, 3] camera intrinsics matrix
+            return_types: List of outputs to generate. Valid types are:
+                         "mask", "depth", "normal_map", "normal", "color"
+                         
         Returns:
-            edict based on return_types containing:
-                color (torch.Tensor): [3, H, W] rendered color image
-                depth (torch.Tensor): [H, W] rendered depth image
-                normal (torch.Tensor): [3, H, W] rendered normal image
-                normal_map (torch.Tensor): [3, H, W] rendered normal map image
-                mask (torch.Tensor): [H, W] rendered mask image
+            Dictionary containing requested render outputs
         """
+        if not all(t in ["mask", "normal", "depth", "normal_map", "color"] 
+                  for t in return_types):
+            raise ValueError(f"Invalid return type in {return_types}")
+            
+        torch.cuda.empty_cache()
+        
         resolution = self.rendering_options["resolution"]
         near = self.rendering_options["near"]
         far = self.rendering_options["far"]
         ssaa = self.rendering_options["ssaa"]
         
+        # Handle empty mesh
         if mesh.vertices.shape[0] == 0 or mesh.faces.shape[0] == 0:
-            default_img = torch.zeros((1, resolution, resolution, 3), dtype=torch.float32, device=self.device)
-            ret_dict = {k : default_img if k in ['normal', 'normal_map', 'color'] else default_img[..., :1] for k in return_types}
-            return ret_dict
+            default_img = torch.zeros((1, resolution, resolution, 3), 
+                                   dtype=torch.float32, device=self.device)
+            return edict({k: default_img if k in ['normal', 'normal_map', 'color'] 
+                        else default_img[..., :1] for k in return_types})
         
+        # Update rasterization settings
+        self.raster_settings.image_size = resolution * ssaa
+        
+        # Camera setup
         perspective = intrinsics_to_projection(intrinsics, near, far)
-        
         RT = extrinsics.unsqueeze(0)
         full_proj = (perspective @ extrinsics).unsqueeze(0)
         
+        # Convert to PyTorch3D coordinates
+        RT = RT.clone()
+        RT[:, :3, 1:3] *= -1
+        
+        # Create cameras
+        fx, fy = intrinsics[0, 0], intrinsics[1, 1]
+        cx, cy = intrinsics[0, 2], intrinsics[1, 2]
+        cameras = PerspectiveCameras(
+            focal_length=((2*fx, 2*fy),),
+            principal_point=((2*cx-1, -2*cy+1),),
+            R=RT[:, :3, :3],
+            T=RT[:, :3, 3],
+            device=self.device
+        )
+        
+        # Prepare mesh
         vertices = mesh.vertices.unsqueeze(0)
-
-        vertices_homo = torch.cat([vertices, torch.ones_like(vertices[..., :1])], dim=-1)
-        vertices_camera = torch.bmm(vertices_homo, RT.transpose(-1, -2))
-
-        # .to(float32) becuase dr needs vertex positions to  always be float32, regardless of pipeline precision:
-        vertices_clip = torch.bmm(vertices_homo, full_proj.transpose(-1, -2)).float()
-        faces_int = mesh.faces.int()
-        rast,  _  = dr.rasterize(self.glctx, vertices_clip, faces_int, (resolution * ssaa, resolution * ssaa))
-        rast      = rast.float() #must always be float32
+        faces = mesh.faces.int()
+        
+        base_mesh = Meshes(
+            verts=vertices,
+            faces=faces.unsqueeze(0),
+            textures=TexturesVertex(mesh.vertex_attrs.unsqueeze(0))
+        )
+        
+        # Rasterize
+        fragments = self.rasterizer(base_mesh, cameras=cameras)
         
         out_dict = edict()
         for type in return_types:
-            img = None
-            if type == "mask" :
-                img = dr.antialias((rast[..., -1:] > 0).float(), rast, vertices_clip, faces_int)
+            if type == "mask":
+                img = (fragments.zbuf > 0).float()
+                img = self.antialias(img, fragments)
+            
             elif type == "depth":
-                img = dr.interpolate(vertices_camera[..., 2:3].float().contiguous(), rast, faces_int)[0]
-                img = dr.antialias(img, rast, vertices_clip, faces_int)
-            elif type == "normal" :
-                img = dr.interpolate(
-                    #.float(), because must always be float32 regardless of pipeline precision:
-                    mesh.face_normal.reshape(1, -1, 3).float(), rast, 
-                    torch.arange(mesh.faces.shape[0] * 3, device=self.device, dtype=torch.int).reshape(-1, 3)
-                )[0]
-                img = dr.antialias(img, rast, vertices_clip, faces_int)
-                # normalize norm pictures
+                depth = fragments.zbuf
+                depth = (depth - near) / (far - near)
+                img = torch.where(depth > 0, depth, 
+                                torch.full_like(depth, float('inf')))
+                img = self.antialias(img, fragments)
+            
+            elif type == "normal":
+                vert_normals = vertex_normals(vertices, faces)
+                normal_mesh = Meshes(
+                    verts=vertices,
+                    faces=faces.unsqueeze(0),
+                    textures=TexturesVertex(vert_normals)
+                )
+                
+                self.shader.cameras = cameras
+                renderer = P3DMeshRenderer(
+                    rasterizer=self.rasterizer,
+                    shader=self.shader
+                )
+                img = renderer(normal_mesh, cameras=cameras)[..., :3]
                 img = (img + 1) / 2
-            elif type == "normal_map" :
-                #.float(), because must always be float32 regardless of pipeline precision:
-                img = dr.interpolate(mesh.vertex_attrs[:, 3:].contiguous().float(), rast, faces_int)[0]
-                img = dr.antialias(img, rast, vertices_clip, faces_int)
-            elif type == "color" :
-                #.float(), because must always be float32 regardless of pipeline precision:
-                img = dr.interpolate(mesh.vertex_attrs[:, :3].contiguous().float(), rast, faces_int)[0]
-                img = dr.antialias(img, rast, vertices_clip, faces_int)
-
+            
+            elif type in ["normal_map", "color"]:
+                attrs = (mesh.vertex_attrs[:, 3:] if type == "normal_map" 
+                        else mesh.vertex_attrs[:, :3])
+                face_attrs = attrs[faces]
+                img = interpolate_face_attributes(
+                    fragments.pix_to_face,
+                    fragments.bary_coords,
+                    face_attrs.unsqueeze(0)
+                )
+                img = self.antialias(img, fragments)
+            
+            # Handle supersampling
             if ssaa > 1:
-                img = F.interpolate(img.permute(0, 3, 1, 2), (resolution, resolution), mode='bilinear', align_corners=False, antialias=True)
+                img = F.interpolate(
+                    img.permute(0, 3, 1, 2),
+                    (resolution, resolution),
+                    mode='bilinear',
+                    align_corners=False,
+                    antialias=True
+                )
                 img = img.squeeze()
             else:
                 img = img.permute(0, 3, 1, 2).squeeze()
+            
             out_dict[type] = img
-
+        
         return out_dict
