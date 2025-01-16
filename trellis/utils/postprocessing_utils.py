@@ -2,7 +2,7 @@ from typing import *
 import numpy as np
 import torch
 import utils3d
-import nvdiffrast.torch as dr
+from .texture_utils_custom import do_texture
 from tqdm import tqdm
 import trimesh
 import trimesh.visual
@@ -275,99 +275,104 @@ def parametrize_mesh(vertices: np.array, faces: np.array):
     return vertices, faces, uvs
 
 
-def bake_texture(
-    vertices: np.array,
-    faces: np.array,
-    uvs: np.array,
-    observations: List[np.array],
-    masks: List[np.array],
-    extrinsics: List[np.array],
-    intrinsics: List[np.array],
-    texture_size: int = 2048,
-    near: float = 0.1,
-    far: float = 10.0,
-    mode: Literal['fast', 'opt'] = 'opt',
-    lambda_tv: float = 1e-2,
-    verbose: bool = False,
-    cancel_event=None,
-):
-    """
-    Bake texture to a mesh from multiple observations.
+def bake_texture(vertices, faces, uvs, observations, masks, extrinsics, intrinsics,
+               texture_size=2048, near=0.1, far=10.0, mode='opt', lambda_tv=1e-2,
+               verbose=False, cancel_event=None):
+    import time
+    verbose = True
 
-    Args:
-        vertices (np.array): Vertices of the mesh. Shape (V, 3).
-        faces (np.array): Faces of the mesh. Shape (F, 3).
-        uvs (np.array): UV coordinates of the mesh. Shape (V, 2).
-        observations (List[np.array]): List of observations. Each observation is a 2D image. Shape (H, W, 3).
-        masks (List[np.array]): List of masks. Each mask is a 2D image. Shape (H, W).
-        extrinsics (List[np.array]): List of extrinsics. Shape (4, 4).
-        intrinsics (List[np.array]): List of intrinsics. Shape (3, 3).
-        texture_size (int): Size of the texture.
-        near (float): Near plane of the camera.
-        far (float): Far plane of the camera.
-        mode (Literal['fast', 'opt']): Mode of texture baking.
-        lambda_tv (float): Weight of total variation loss in optimization.
-        verbose (bool): Whether to print progress.
-    """
+    t_start = time.time()
+    
+    # Data transfer to GPU
+    t0 = time.time()
     vertices = torch.tensor(vertices).cuda()
     faces = torch.tensor(faces.astype(np.int32)).cuda()
     uvs = torch.tensor(uvs).cuda()
-    observations = [torch.tensor(obs / 255.0, dtype=torch.float16).cuda() for obs in observations]#float16 instead of float32, to fit into low VRAM gpus
+    observations = [torch.tensor(obs / 255.0, dtype=torch.float16).cuda() for obs in observations]
     masks = [torch.tensor(m>0).bool().cuda() for m in masks]
     views = [utils3d.torch.extrinsics_to_view(torch.tensor(extr).cuda()) for extr in extrinsics]
     projections = [utils3d.torch.intrinsics_to_perspective(torch.tensor(intr).cuda(), near, far) for intr in intrinsics]
+    t_gpu = time.time() - t0
 
     if mode == 'fast':
+        t0 = time.time()
         texture = torch.zeros((texture_size * texture_size, 3), dtype=torch.float32).cuda()
         texture_weights = torch.zeros((texture_size * texture_size), dtype=torch.float32).cuda()
         rastctx = utils3d.torch.RastContext(backend='cuda')
-        for observation, view, projection in tqdm(zip(observations, views, projections), total=len(observations), disable=not verbose, desc='Texture baking (fast)'):
-            if cancel_event and cancel_event.is_set(): 
-                raise CancelledException(f"Cancelled the texture baking (fast).")
+        
+        t_rast_total = 0
+        t_interp_total = 0
+        
+        for observation, view, projection in tqdm(zip(observations, views, projections), 
+                                                total=len(observations), disable=not verbose, 
+                                                desc='Texture baking (fast)'):
+            if cancel_event and cancel_event.is_set():
+                raise CancelledException("Cancelled the texture baking (fast).")
+                
+            # Rasterization timing
+            t_rast = time.time()
             with torch.no_grad():
                 rast = utils3d.torch.rasterize_triangle_faces(
-                    rastctx, vertices[None], faces, observation.shape[1], observation.shape[0], uv=uvs[None], view=view, projection=projection
+                    rastctx, vertices[None], faces, observation.shape[1], observation.shape[0],
+                    uv=uvs[None], view=view, projection=projection
                 )
                 uv_map = rast['uv'][0].detach().flip(0)
                 mask = rast['mask'][0].detach().bool() & masks[0]
+            t_rast_total += time.time() - t_rast
             
-            # nearest neighbor interpolation
+            # Interpolation timing
+            t_interp = time.time()
             uv_map = (uv_map * texture_size).floor().long()
             obs = observation[mask]
             uv_map = uv_map[mask]
             idx = uv_map[:, 0] + (texture_size - uv_map[:, 1] - 1) * texture_size
             texture = texture.scatter_add(0, idx.view(-1, 1).expand(-1, 3), obs)
             texture_weights = texture_weights.scatter_add(0, idx, torch.ones((obs.shape[0]), dtype=torch.float32, device=texture.device))
+            t_interp_total += time.time() - t_interp
 
+        t_final = time.time()
         mask = texture_weights > 0
         texture[mask] /= texture_weights[mask][:, None]
         texture = np.clip(texture.reshape(texture_size, texture_size, 3).cpu().numpy() * 255, 0, 255).astype(np.uint8)
 
-        # inpaint
         mask = (texture_weights == 0).cpu().numpy().astype(np.uint8).reshape(texture_size, texture_size)
         texture = cv2.inpaint(texture, mask, 3, cv2.INPAINT_TELEA)
+        t_post = time.time() - t_final
+        
+        if verbose:
+            print(f"\nTiming breakdown:")
+            print(f"GPU transfer: {t_gpu:.2f}s")
+            print(f"Rasterization: {t_rast_total:.2f}s")
+            print(f"Interpolation: {t_interp_total:.2f}s")
+            print(f"Post-processing: {t_post:.2f}s")
+            print(f"Total time: {time.time() - t_start:.2f}s")
 
     elif mode == 'opt':
+        t0 = time.time()
         rastctx = utils3d.torch.RastContext(backend='cuda')
-        observations = [observations.flip(0) for observations in observations]
+        observations = [obs.flip(0) for obs in observations]
         masks = [m.flip(0) for m in masks]
         _uv = []
         _uv_dr = []
-        for observation, view, projection in tqdm(zip(observations, views, projections), total=len(views), disable=not verbose, desc='Texture baking (opt): UV'):
-            if cancel_event and cancel_event.is_set(): 
-                raise CancelledException(f"Cancelled the texture baking (opt).")
+        
+        # UV computation timing
+        t_uv = time.time()
+        for observation, view, projection in tqdm(zip(observations, views, projections), 
+                                                total=len(views), disable=not verbose, 
+                                                desc='Texture baking (opt): UV'):
+            if cancel_event and cancel_event.is_set():
+                raise CancelledException("Cancelled the texture baking (opt).")
             with torch.no_grad():
                 rast = utils3d.torch.rasterize_triangle_faces(
-                    rastctx, vertices[None], faces, observation.shape[1], observation.shape[0], uv=uvs[None], view=view, projection=projection
+                    rastctx, vertices[None], faces, observation.shape[1], observation.shape[0],
+                    uv=uvs[None], view=view, projection=projection
                 )
                 _uv.append(rast['uv'].detach())
                 _uv_dr.append(rast['uv_dr'].detach())
+        t_uv_total = time.time() - t_uv
 
         texture = torch.nn.Parameter(torch.zeros((1, texture_size, texture_size, 3), dtype=torch.float32).cuda())
         optimizer = torch.optim.Adam([texture], betas=(0.5, 0.9), lr=1e-2)
-
-        def exp_anealing(optimizer, step, total_steps, start_lr, end_lr):
-            return start_lr * (end_lr / start_lr) ** (step / total_steps)
 
         def cosine_anealing(optimizer, step, total_steps, start_lr, end_lr):
             return end_lr + 0.5 * (start_lr - end_lr) * (1 + np.cos(np.pi * step / total_steps))
@@ -376,29 +381,42 @@ def bake_texture(
             return torch.nn.functional.l1_loss(texture[:, :-1, :, :], texture[:, 1:, :, :]) + \
                    torch.nn.functional.l1_loss(texture[:, :, :-1, :], texture[:, :, 1:, :])
     
+        # Optimization timing
+        t_opt = time.time()
         total_steps = 2500
         with tqdm(total=total_steps, disable=not verbose, desc='Texture baking (opt): optimizing') as pbar:
             for step in range(total_steps):
                 optimizer.zero_grad()
                 selected = np.random.randint(0, len(views))
                 uv, uv_dr, observation, mask = _uv[selected], _uv_dr[selected], observations[selected], masks[selected]
-                render = dr.texture(texture, uv, uv_dr)[0]
+                render = do_texture(texture, uv, uv_dr)[0]
                 loss = torch.nn.functional.l1_loss(render[mask], observation[mask])
                 if lambda_tv > 0:
                     loss += lambda_tv * tv_loss(texture)
                 loss.backward()
                 optimizer.step()
-                # annealing
                 optimizer.param_groups[0]['lr'] = cosine_anealing(optimizer, step, total_steps, 1e-2, 1e-5)
                 pbar.set_postfix({'loss': loss.item()})
                 pbar.update()
-                if cancel_event and cancel_event.is_set(): 
+                if cancel_event and cancel_event.is_set():
                     raise CancelledException(f"Cancelled texture optimization at step {step}/{total_steps}.")
+        t_opt_total = time.time() - t_opt
+
+        t_final = time.time()
         texture = np.clip(texture[0].flip(0).detach().cpu().numpy() * 255, 0, 255).astype(np.uint8)
         mask = 1 - utils3d.torch.rasterize_triangle_faces(
             rastctx, (uvs * 2 - 1)[None], faces, texture_size, texture_size
         )['mask'][0].detach().cpu().numpy().astype(np.uint8)
         texture = cv2.inpaint(texture, mask, 3, cv2.INPAINT_TELEA)
+        t_post = time.time() - t_final
+
+        if verbose:
+            print(f"\nTiming breakdown:")
+            print(f"GPU transfer: {t_gpu:.2f}s")
+            print(f"UV computation: {t_uv_total:.2f}s")
+            print(f"Optimization: {t_opt_total:.2f}s")
+            print(f"Post-processing: {t_post:.2f}s")
+            print(f"Total time: {time.time() - t_start:.2f}s")
     else:
         raise ValueError(f'Unknown mode: {mode}')
 
