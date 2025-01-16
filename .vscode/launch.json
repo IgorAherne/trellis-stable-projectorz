@@ -10,6 +10,7 @@
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/api_spz/main_api.py",
+            "justMyCode": false,
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}",
             "env": {

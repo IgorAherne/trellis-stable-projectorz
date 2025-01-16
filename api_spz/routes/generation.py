@@ -219,12 +219,12 @@ async def _run_pipeline_generate_previews(outputs, resolution:int, preview_frame
                 cancel_event=cancel_event
             )["color"],
             # For performance reasons, skipping these videos:
-            # "mesh": render_utils.render_video(
-            #     outputs["mesh"][0],
-            #     resolution=resolution,
-            #     num_frames=preview_frames,
-            #     cancel_event=cancel_event
-            # )["normal"],
+            "mesh": render_utils.render_video(
+                outputs["mesh"][0],
+                resolution=resolution,
+                num_frames=preview_frames,
+                cancel_event=cancel_event
+            )["normal"],
             # "radiance": render_utils.render_video(
             #     outputs["radiance_field"][0],
             #     resolution=resolution,
@@ -529,11 +529,11 @@ async def generate_multi_preview(
                     num_frames=arg.preview_frames
                 )["color"],
                 #we don't need radiance to make mesh+texture, so omitting for performance reasons:
-                #  "mesh": render_utils.render_video(
-                #      outputs["mesh"][0],
-                #      resolution=arg.preview_resolution,
-                #      num_frames=arg.preview_frames
-                #  )["normal"],
+                "mesh": render_utils.render_video(
+                    outputs["mesh"][0],
+                    resolution=arg.preview_resolution,
+                    num_frames=arg.preview_frames
+                )["normal"],
                 #  "radiance": render_utils.render_video(
                 #      outputs["radiance_field"][0],
                 #      resolution=arg.preview_resolution,

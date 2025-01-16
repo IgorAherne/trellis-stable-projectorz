@@ -10,9 +10,11 @@ from pytorch3d.renderer import (
     MeshRasterizer,
     SoftPhongShader,
     TexturesVertex,
-    interpolate_face_attributes
 )
-from pytorch3d.ops import vertex_normals
+from pytorch3d.ops.interp_face_attrs import (
+    interpolate_face_attributes, #the cuda version
+    interpolate_face_attributes_python, #the python version (keep here as a reminder)
+)
 
 def intrinsics_to_projection(
         intrinsics: torch.Tensor,
@@ -82,18 +84,38 @@ class MeshRenderer:
         )
     
     def antialias(self, img: torch.Tensor, fragments) -> torch.Tensor:
-        """Apply antialiasing using weighted interpolation
-        
-        Args:
-            img: Image tensor to antialias
-            fragments: Rasterization fragments containing barycentric coordinates
-            
-        Returns:
-            Antialiased image tensor
-        """
+        """Memory-efficient antialiasing with 2D chunking"""
         weights = fragments.bary_coords[..., 0]
-        return (img * weights.unsqueeze(-1)).sum(dim=-2)
+        result = torch.empty_like(img)
+        
+        chunk_size = min(256, img.shape[1], img.shape[2])
+        for i in range(0, img.shape[1], chunk_size):
+            for j in range(0, img.shape[2], chunk_size):
+                h_slice = slice(i, min(i + chunk_size, img.shape[1]))
+                w_slice = slice(j, min(j + chunk_size, img.shape[2]))
+                
+                result[:, h_slice, w_slice] = (
+                    img[:, h_slice, w_slice] * 
+                    weights[:, h_slice, w_slice].unsqueeze(-1)
+                ).sum(dim=-2)
+        
+        return result
+
+    def _compute_vertex_normals(self, vertices: torch.Tensor, faces: torch.Tensor) -> torch.Tensor:
+        """Compute smooth vertex normals from face normals"""
+        vertices = vertices if vertices.dim() == 3 else vertices.unsqueeze(0)
+        faces = faces if faces.dim() == 3 else faces.unsqueeze(0)
+        
+        v0, v1, v2 = [vertices[:, faces[..., i]] for i in range(3)]
+        face_normals = F.normalize(torch.cross(v1 - v0, v2 - v0), dim=-1)
+        
+        vertex_normals = torch.zeros_like(vertices)
+        for i in range(3):
+            vertex_normals.index_add_(1, faces[..., i], face_normals)
+        
+        return F.normalize(vertex_normals, dim=-1)
     
+
     @torch.cuda.amp.autocast()
     def render(
             self,
@@ -183,11 +205,13 @@ class MeshRenderer:
                 img = self.antialias(img, fragments)
             
             elif type == "normal":
-                vert_normals = vertex_normals(vertices, faces)
+                # Compute smooth vertex normals
+                vertex_normals = self._compute_vertex_normals(vertices, faces)
+
                 normal_mesh = Meshes(
                     verts=vertices,
                     faces=faces.unsqueeze(0),
-                    textures=TexturesVertex(vert_normals)
+                    textures=TexturesVertex(vertex_normals)
                 )
                 
                 self.shader.cameras = cameras
