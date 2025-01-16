@@ -179,7 +179,7 @@ class MeshRenderer:
         )
         
         # Prepare mesh
-        vertices = mesh.vertices.unsqueeze(0)
+        vertices = mesh.vertices.unsqueeze(0).to(torch.float32)
         faces = mesh.faces.int()
         
         base_mesh = Meshes(
@@ -206,7 +206,7 @@ class MeshRenderer:
             
             elif type == "normal":
                 # Compute smooth vertex normals
-                vertex_normals = self._compute_vertex_normals(vertices, faces)
+                vertex_normals = self._compute_vertex_normals(vertices, faces).to(torch.float32)#has to be float32 for the c++ code to work in pytorch32
 
                 normal_mesh = Meshes(
                     verts=vertices,
