@@ -102,16 +102,16 @@ class MeshRenderer:
         return result
 
     def _compute_vertex_normals(self, vertices: torch.Tensor, faces: torch.Tensor) -> torch.Tensor:
-        """Compute smooth vertex normals from face normals"""
         vertices = vertices if vertices.dim() == 3 else vertices.unsqueeze(0)
         faces = faces if faces.dim() == 3 else faces.unsqueeze(0)
         
         v0, v1, v2 = [vertices[:, faces[..., i]] for i in range(3)]
         face_normals = F.normalize(torch.cross(v1 - v0, v2 - v0), dim=-1)
+        face_normals = face_normals.squeeze(0).to(vertices.dtype)  # Match dtype
         
         vertex_normals = torch.zeros_like(vertices)
-        for i in range(3):
-            vertex_normals.index_add_(1, faces[..., i], face_normals)
+        for i in range(3):   #use faces[0, :, i] to get 1D index tensor:
+            vertex_normals.index_add_(1, faces[0, :, i], face_normals)
         
         return F.normalize(vertex_normals, dim=-1)
     
