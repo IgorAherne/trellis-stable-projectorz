@@ -8,7 +8,7 @@ import io
 import base64
 import os
 from pathlib import Path
-from fastapi import APIRouter, File, UploadFile, Form, HTTPException, Query, Depends
+from fastapi import APIRouter, File, Response, UploadFile, Form, HTTPException, Query, Depends
 from fastapi.responses import FileResponse
 from PIL import Image
 import torch
@@ -694,3 +694,20 @@ async def download_model():
         filename="model.glb"
     )
 
+
+@router.get("/download/spz-ui-layout/generation-3d-panel")
+async def get_generation_panel_layout():
+    """Return the UI layout for the generation panel."""
+    try:
+        file_path = os.path.join(os.path.dirname(__file__), 'layout_generation_3d_panel.txt')
+        with open(file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+            # By using Response(content=content, media_type="text/plain; charset=utf-8")
+            # - Bypass the automatic JSON encoding
+            # - Explicitly tell the client this is plain text (not JSON)
+            # - Ensure proper UTF-8 encoding is maintained
+            # This way Unity receives the layout text exactly as it appears in the file.
+            # It keeps proper line breaks and formatting intact, with special characters not being escaped:
+            return Response(content=content,  media_type="text/plain; charset=utf-8")
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Layout file not found")
