@@ -2,13 +2,13 @@ import gc
 import logging
 import time
 import traceback
-from typing import Optional, Literal, List, Union
+from typing import Dict, Optional, Literal, List, Union
 import asyncio
 import io
 import base64
 import os
 from pathlib import Path
-from fastapi import APIRouter, File, UploadFile, Form, HTTPException, Query, Depends
+from fastapi import APIRouter, File, Response, UploadFile, Form, HTTPException, Query, Depends
 from fastapi.responses import FileResponse
 from PIL import Image
 import torch
@@ -651,6 +651,56 @@ async def resume_from_preview(
         generation_lock.release()
 
 
+@router.post("/generate", response_model=GenerationResponse)
+async def process_ui_generation_request(
+    data: Dict
+):
+    """Process generation request from the UI panel and redirect to appropriate endpoint."""
+    try:
+        # Extract values from simplified input format
+        arg = GenerationArgForm(
+            seed = int(data.get("seed",{}).get("value", 1)),
+            ss_guidance_strength   = data.get("ss_strength", {}).get("value", 7.5),
+            ss_sampling_steps      = int(data.get("ss_steps", {}).get("value", 12)),
+            slat_guidance_strength = data.get("slat_strength", {}).get("value", 3.0),
+            slat_sampling_steps = int(data.get("slat_steps", {}).get("value", 12)),
+            preview_resolution  = 512,  # default value
+            preview_frames      = 150,  # default value
+            preview_fps         = 20,   # default value
+            mesh_simplify_ratio = data.get("mesh_simplify", {}).get("value", 0.95),
+            texture_size        = int(data.get("texture_size", {}).get("value", 1024)),
+            output_format = "glb"
+        )
+        # Get images from input
+        images_base64 = data.get("single_multi_img_input", {}).get("value", [])
+        if not images_base64:
+            raise HTTPException(status_code=400, detail="No images provided")
+
+        # Decide whether to generate preview based on input
+        skip_videos = data.get("skip_videos", {}).get("value", True)
+        
+        if skip_videos:
+            # Call generate_multi_no_preview
+            response = await generate_multi_no_preview(
+                file_list=None,
+                image_list_base64=images_base64,
+                arg=arg
+            )
+        else:
+            # Call generate_multi_preview
+            response = await generate_multi_preview(
+                file_list=None,
+                image_list_base64=images_base64,
+                arg=arg
+            )
+
+        return response
+
+    except Exception as e:
+        logger.error(f"Error processing UI generation request: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 
 @router.post("/interrupt")
 async def interrupt_generation():
@@ -694,3 +744,20 @@ async def download_model():
         filename="model.glb"
     )
 
+
+@router.get("/download/spz-ui-layout/generation-3d-panel")
+async def get_generation_panel_layout():
+    """Return the UI layout for the generation panel."""
+    try:
+        file_path = os.path.join(os.path.dirname(__file__), 'layout_generation_3d_panel.txt')
+        with open(file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+            # By using Response(content=content, media_type="text/plain; charset=utf-8")
+            # - Bypass the automatic JSON encoding
+            # - Explicitly tell the client this is plain text (not JSON)
+            # - Ensure proper UTF-8 encoding is maintained
+            # This way Unity receives the layout text exactly as it appears in the file.
+            # It keeps proper line breaks and formatting intact, with special characters not being escaped:
+            return Response(content=content,  media_type="text/plain; charset=utf-8")
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Layout file not found")
