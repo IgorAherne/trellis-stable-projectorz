@@ -2,7 +2,7 @@ import gc
 import logging
 import time
 import traceback
-from typing import Optional, Literal, List, Union
+from typing import Dict, Optional, Literal, List, Union
 import asyncio
 import io
 import base64
@@ -649,6 +649,56 @@ async def resume_from_preview(
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         generation_lock.release()
+
+
+@router.post("/generate", response_model=GenerationResponse)
+async def process_ui_generation_request(
+    data: Dict
+):
+    """Process generation request from the UI panel and redirect to appropriate endpoint."""
+    try:
+        # Extract values from simplified input format
+        arg = GenerationArgForm(
+            seed = int(data.get("seed",{}).get("value", 1)),
+            ss_guidance_strength   = data.get("ss_strength", {}).get("value", 7.5),
+            ss_sampling_steps      = int(data.get("ss_steps", {}).get("value", 12)),
+            slat_guidance_strength = data.get("slat_strength", {}).get("value", 3.0),
+            slat_sampling_steps = int(data.get("slat_steps", {}).get("value", 12)),
+            preview_resolution  = 512,  # default value
+            preview_frames      = 150,  # default value
+            preview_fps         = 20,   # default value
+            mesh_simplify_ratio = data.get("mesh_simplify", {}).get("value", 0.95),
+            texture_size        = int(data.get("texture_size", {}).get("value", 1024)),
+            output_format = "glb"
+        )
+        # Get images from input
+        images_base64 = data.get("single_multi_img_input", {}).get("value", [])
+        if not images_base64:
+            raise HTTPException(status_code=400, detail="No images provided")
+
+        # Decide whether to generate preview based on input
+        skip_videos = data.get("skip_videos", {}).get("value", True)
+        
+        if skip_videos:
+            # Call generate_multi_no_preview
+            response = await generate_multi_no_preview(
+                file_list=None,
+                image_list_base64=images_base64,
+                arg=arg
+            )
+        else:
+            # Call generate_multi_preview
+            response = await generate_multi_preview(
+                file_list=None,
+                image_list_base64=images_base64,
+                arg=arg
+            )
+
+        return response
+
+    except Exception as e:
+        logger.error(f"Error processing UI generation request: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 
