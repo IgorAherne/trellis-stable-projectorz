@@ -678,22 +678,27 @@ async def process_ui_generation_request(
 
         # Decide whether to generate preview based on input
         skip_videos = data.get("skip_videos", {}).get("value", True)
-        
-        if skip_videos:
-            # Call generate_multi_no_preview
-            response = await generate_multi_no_preview(
-                file_list=None,
-                image_list_base64=images_base64,
-                arg=arg
-            )
-        else:
-            # Call generate_multi_preview
-            response = await generate_multi_preview(
-                file_list=None,
-                image_list_base64=images_base64,
-                arg=arg
-            )
 
+        # for now always skip videos (StableProjectorz doesn't show them) - 20 Jan 2025
+        response = await generate_multi_no_preview(
+            file_list=None,
+            image_list_base64=images_base64,
+            arg=arg
+        )
+        # if skip_videos:
+        #     # Call generate_multi_no_preview
+        #     response = await generate_multi_no_preview(
+        #         file_list=None,
+        #         image_list_base64=images_base64,
+        #         arg=arg
+        #     )
+        # else:
+        #     # Call generate_multi_preview
+        #     response = await generate_multi_preview(
+        #         file_list=None,
+        #         image_list_base64=images_base64,
+        #         arg=arg
+        #     )
         return response
 
     except Exception as e:
