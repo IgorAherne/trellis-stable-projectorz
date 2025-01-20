@@ -2,7 +2,7 @@ vgroup padl=4 padr=4 spacing=8 flexibleWidth=1
     go minHeight=180 preferredHeight=180 flexibleWidth=1
         text_prompt  code_name(prompt_positive)  visible_name=(prompt +)  min_num_chars=0  is_positive=true
     
-    single_multi_img_input  code_name=(single_multi_img_input)  visible_name=(single_multi_img_input)  min_num_images=1
+    single_multi_img_input  code_name=(single_multi_img_input)  visible_name=(single_multi_img_input)  content_min_num_needed=1
     go minHeight=140 preferredHeight=140 flexibleWidth=1
         hgroup  rect.anchors=(0,0,0.5,1)  rect.offsetMax=(-4,0)  bg.color=(255,255,255,10)  bg.ppu=10
             
@@ -21,7 +21,7 @@ vgroup padl=4 padr=4 spacing=8 flexibleWidth=1
         hgroup  rect.anchors=(0,0,0.5,1)  rect.offsetMax=(-4,0)  bg.color=(255,255,255,10)  bg.ppu=10
             
             space minWidth=20  flexibleHeight=1  flexibleWidth=1
-            slider  code_name=(mesh_simplify)  visible_name=(mesh\nsimplify)  min=0.0  max=1.0  default=0.9  show_n_decimals=2  flexibleHeight=1
+            slider  code_name=(mesh_simplify)  visible_name=(mesh\nsimplify)  min=0.0  max=1.0  default=0.9  show_n_decimals=2  flexibleHeight=1 
             space  minWidth=20  preferredWidth=30  flexibleHeight=1
             int_vertical  code_name=(texture_size)  visible_name=(texture\nsize)  min=255  max=8192  default=1024  flexibleHeight=1
             space  minWidth=20   flexibleHeight=1  flexibleWidth=1
