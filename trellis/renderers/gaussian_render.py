@@ -76,7 +76,7 @@ def render(viewpoint_camera, pc : Gaussian, pipe, bg_color : torch.Tensor, scali
         tanfovx=tanfovx,
         tanfovy=tanfovy,
         # kernel_size=kernel_size,         #commented out Jan 2025
-        #subpixel_offset=subpixel_offset,  #commented out Jan 2025 https://github.com/IgorAherne/trellis-stable-projectorz/issues/2#issuecomment-2600887818
+        # subpixel_offset=subpixel_offset, #commented out Jan 2025 https://github.com/IgorAherne/trellis-stable-projectorz/issues/2#issuecomment-2600887818
         bg=bg_color,
         scale_modifier=scaling_modifier,
         viewmatrix=viewpoint_camera.world_view_transform,
