@@ -115,7 +115,7 @@ from api_spz.routes import generation
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print('')
-    logger.info("Trellis API Server is active and listening.")
+    logger.info(f"Trellis API Server is active and listening on {cmd_args.ip}:{cmd_args.port}")
     print('')
     yield
     state.cleanup()#shutdown
