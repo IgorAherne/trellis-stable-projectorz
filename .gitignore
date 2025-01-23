@@ -37,6 +37,7 @@ bld/
 [Ll]og/
 [Ll]ogs/
 
+/tmp
 
 # Ignore .glb and .mp4 files only in the root directory
 /*.glb
