@@ -717,7 +717,10 @@ async def process_ui_generation_request(
 
 
 
-# In your FastAPI router (generation.py):
+# for exmaple:
+#   "make_meshes_with_tex",
+#   "retexture",
+#   "retexture_via_masks"  etc
 @router.get("/info/supported_operations")
 async def get_supported_operation_types():
    return ["make_meshes_with_tex", "retexture"]
