@@ -1,4 +1,5 @@
 import gc
+import json
 import logging
 import time
 import traceback
@@ -656,28 +657,37 @@ async def process_ui_generation_request(
     data: Dict
 ):
     """Process generation request from the UI panel and redirect to appropriate endpoint."""
+
+    #MODIF
+    return GenerationResponse(
+            status=TaskStatus.COMPLETE,
+            progress=100,
+            message="Generation complete",
+            model_url="/download/texture"  # single endpoint
+        )
+
     try:
         # Extract values from simplified input format
         arg = GenerationArgForm(
-            seed = int(data.get("seed",{}).get("value", 1)),
-            ss_guidance_strength   = data.get("ss_strength", {}).get("value", 7.5),
-            ss_sampling_steps      = int(data.get("ss_steps", {}).get("value", 12)),
-            slat_guidance_strength = data.get("slat_strength", {}).get("value", 3.0),
-            slat_sampling_steps = int(data.get("slat_steps", {}).get("value", 12)),
-            preview_resolution  = 512,  # default value
-            preview_frames      = 150,  # default value
-            preview_fps         = 20,   # default value
-            mesh_simplify_ratio = data.get("mesh_simplify", {}).get("value", 0.95),
-            texture_size        = int(data.get("texture_size", {}).get("value", 1024)),
+            seed = int(data.get("seed", 1)),
+            ss_guidance_strength = data.get("ss_strength", 7.5),
+            ss_sampling_steps = int(data.get("ss_steps", 12)),
+            slat_guidance_strength = data.get("slat_strength", 3.0),
+            slat_sampling_steps = int(data.get("slat_steps", 12)),
+            preview_resolution = 512,
+            preview_frames     = 150,
+            preview_fps        = 20,
+            mesh_simplify_ratio = data.get("mesh_simplify", 0.95),
+            texture_size = int(data.get("texture_size", 1024)),
             output_format = "glb"
         )
         # Get images from input
-        images_base64 = data.get("single_multi_img_input", {}).get("value", [])
+        images_base64 = data.get("single_multi_img_input", [])
         if not images_base64:
             raise HTTPException(status_code=400, detail="No images provided")
 
         # Decide whether to generate preview based on input
-        skip_videos = data.get("skip_videos", {}).get("value", True)
+        skip_videos = data.get("skip_videos", True)
 
         # for now always skip videos (StableProjectorz doesn't show them) - 20 Jan 2025
         response = await generate_multi_no_preview(
@@ -704,6 +714,50 @@ async def process_ui_generation_request(
     except Exception as e:
         logger.error(f"Error processing UI generation request: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+
+# In your FastAPI router (generation.py):
+@router.get("/info/supported_operations")
+async def get_supported_operation_types():
+   return ["make_meshes_with_tex", "retexture"]
+
+
+#MODIF
+import asyncio
+import numpy as np
+import base64
+from PIL import Image
+import io
+
+def create_colored_image(color):
+    img = Image.new('RGB', (256, 256), color)
+    buffered = io.BytesIO()
+    img.save(buffered, format="PNG")
+    return base64.b64encode(buffered.getvalue()).decode()
+
+@router.get("/download/texture")
+async def download_texture():
+    await asyncio.sleep(2)  # Simulate processing time
+    # Create rainbow-colored test images
+    colors = ['red', 'orange', 'yellow', 'green', 'blue', 'purple']
+    mock_response = {
+        "albedo_tex_list": [create_colored_image('red'), create_colored_image('yellow'), create_colored_image('orange')],
+        "normals_tex_list": [create_colored_image('green')],
+        "specular_tex_list": [create_colored_image('blue')],
+        "metallic_tex_list": [create_colored_image('purple')],
+        "ao_tex_list": [create_colored_image('white')],
+        "some_bool_param": True
+    }
+    return Response(content=json.dumps(mock_response), media_type="application/json")
+
+
+
+
+
+
+
+
 
 
 
