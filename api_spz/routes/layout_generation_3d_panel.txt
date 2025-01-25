@@ -2,7 +2,7 @@ vgroup padl=4 padr=4 spacing=8 flexibleWidth=1
     go minHeight=180 preferredHeight=180 flexibleWidth=1
         text_prompt  code_name(prompt_positive)  visible_name=(prompt +)  min_num_chars=0  is_positive=true
     
-    single_multi_img_input  code_name=(single_multi_img_input)  visible_name=(single_multi_img_input)  content_min_num_needed=(make_meshes_with_tex:1)
+    single_multi_img_input  code_name=(single_multi_img_input)  visible_name=(single_multi_img_input)  content_min_num_needed=(make_meshes_with_tex:1, retexture:0 )
     go minHeight=140 preferredHeight=140 flexibleWidth=1
         hgroup  rect.anchors=(0,0,0.5,1)  rect.offsetMax=(-4,0)  bg.color=(255,255,255,10)  bg.ppu=10 
             
