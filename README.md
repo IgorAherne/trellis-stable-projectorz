@@ -20,7 +20,7 @@ I've changed it to use `int32` instead of `int64`, reducing memory by half durin
 3) and then follow steps in `code/install.py` around line 130, method `install_dependencies()`
 4) you will need to pip install wheel files, find them in `code/whl` folder.
 5) Lastly, from inside the `code` folder, do `git submodule deinit -f --all` and then `git submodule update --init --recursive` to make sure flexicubes sub-repo is installed
-6) launch via `python main_gradio.py --precision half`
+6) launch via `python main_gradio.py --precision half` or for api support via `python api_spz/main_api.py`
 
 
 
