@@ -18,6 +18,8 @@ from trellis.pipelines import TrellisImageTo3DPipeline
 from trellis.representations import Gaussian, MeshExtractResult
 from trellis.utils import render_utils, postprocessing_utils
 
+from version import code_version
+
 # -------------- CMD ARGS PARSE -----------------
 
 # read command-line arguments, passed into this script when launching it:
@@ -422,6 +424,7 @@ def initialize_pipeline(precision="full"):
     # Apply precision settings. Reduce memory usage at the cost of numerical precision:
     print('')
     print(f"used precision: '{precision}'.  Loading...")
+    print(f"Trellis repo version {code_version}")
     if precision == "half" or precision=="float16":
         pipeline.to(torch.float16) #cuts memory usage in half
         if "image_cond_model" in pipeline.models:

@@ -31,7 +31,6 @@ from trellis.pipelines import TrellisImageTo3DPipeline
 from trellis.utils import render_utils, postprocessing_utils
 
 
-
 router = APIRouter()
 
 logger = logging.getLogger("trellis") #was already setup earlier, during main.
@@ -655,69 +654,6 @@ async def resume_from_preview(
 
 
 
-
-# import tkinter as tk
-# from PIL import Image, ImageTk
-# import io
-# 
-# @router.post("/generate", response_model=GenerationResponse)
-# async def process_ui_generation_request(data: Dict):
-#     def show_images():
-#         root = tk.Tk()
-#         root.title("Received Images")
-#         
-#         # Calculate total number of images to determine grid size
-#         total_images = sum(len(data[key]) for key in ["albedo_textures_udims", "painted_mask_udims"] if key in data)
-#         cols = min(4, total_images)  # Max 4 images per row
-#         current_row = 0
-#         current_col = 0
-# 
-#         for key in data:
-#             if key in ["albedo_textures_udims", "painted_mask_udims"]:
-#                 print(f"\nProcessing {key}:")
-#                 for i, b64_str in enumerate(data[key]):
-#                     try:
-#                         img_data = base64.b64decode(b64_str)
-#                         img = Image.open(io.BytesIO(img_data))
-#                         print(f"{key} {i}: {img.width}x{img.height}")
-#                         
-#                         # Create frame for image and label
-#                         frame = tk.Frame(root)
-#                         frame.grid(row=current_row, column=current_col, padx=5, pady=5)
-#                         
-#                         # Resize and display image
-#                         img.thumbnail((256, 256))  # Smaller thumbnails to fit grid
-#                         photo = ImageTk.PhotoImage(img)
-#                         label = tk.Label(frame, image=photo)
-#                         label.image = photo  # Keep reference
-#                         label.pack()
-#                         
-#                         # Add label below image
-#                         tk.Label(frame, text=f"{key} - {i}").pack()
-#                         
-#                         # Update grid position
-#                         current_col += 1
-#                         if current_col >= cols:
-#                             current_col = 0
-#                             current_row += 1
-#                             
-#                     except Exception as e:
-#                         print(f"Error processing image {i} from {key}: {e}")
-#         
-#         root.mainloop()
-# 
-#     # Start the image viewer in a separate thread
-#     threading.Thread(target=show_images).start()
-# 
-#     return GenerationResponse(
-#         status=TaskStatus.COMPLETE,
-#         progress=100,
-#         message="Generation complete",
-#         model_url="/download/texture"
-#     ) 
-
-
-
 @router.post("/generate", response_model=GenerationResponse)
 async def process_ui_generation_request(
     data: Dict
@@ -775,47 +711,13 @@ async def process_ui_generation_request(
 
 
 
-# for exmaple:
+# for example:
 #   "make_meshes_and_tex",
 #   "retexture",
-#   "retexture_via_masks"  etc
+#   "retexture_via_masks"  etc (see api-documentation.html)
 @router.get("/info/supported_operations")
 async def get_supported_operation_types():
-   return ["make_meshes_and_tex", "retexture", "retexture_via_masks"]
-
-
-#MODIF
-import asyncio
-import numpy as np
-import base64
-from PIL import Image
-import io
-
-def create_colored_image(color):
-    img = Image.new('RGB', (256, 256), color)
-    buffered = io.BytesIO()
-    img.save(buffered, format="PNG")
-    return base64.b64encode(buffered.getvalue()).decode()
-
-@router.get("/download/texture")
-async def download_texture():
-    await asyncio.sleep(2)  # Simulate processing time
-    # Create rainbow-colored test images
-    colors = ['red', 'orange', 'yellow', 'green', 'blue', 'purple']
-    mock_response = {
-        "albedo_tex_list": [create_colored_image('red'), create_colored_image('yellow'), create_colored_image('orange')],
-        "normals_tex_list": [create_colored_image('green'), create_colored_image('purple')],
-        "ao_tex_list": [create_colored_image('white')],
-        "some_bool_param": True
-    }
-    return Response(content=json.dumps(mock_response), media_type="application/json")
-
-
-
-
-
-
-
+   return ["make_meshes_and_tex"]
 
 
 
