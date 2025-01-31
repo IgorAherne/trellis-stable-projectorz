@@ -110,12 +110,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from api_spz.routes import generation
-from version import code_version
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print('')
-    logger.info(f"Trellis API version {code_version}")
     logger.info(f"Trellis API Server is active and listening on {cmd_args.ip}:{cmd_args.port}")
     print('')
     yield
