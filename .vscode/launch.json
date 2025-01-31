@@ -9,7 +9,7 @@
             "name": "Python Debugger: Current File",
             "type": "debugpy",
             "request": "launch",
-            "program": "${workspaceFolder}/api_spz/main_api.py",
+            "program": "${workspaceFolder}/gradio_main.py",
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}",
             "env": {

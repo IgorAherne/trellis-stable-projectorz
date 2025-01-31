@@ -111,7 +111,6 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from api_spz.routes import generation
 
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print('')

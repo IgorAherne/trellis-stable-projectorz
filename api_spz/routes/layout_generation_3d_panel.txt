@@ -1,10 +1,9 @@
 vgroup padl=4 padr=4 spacing=8 flexibleWidth=1
-    go minHeight=180 preferredHeight=180 flexibleWidth=1
-        text_prompt  code_name(prompt_positive)  visible_name=(prompt +)  min_num_chars=0  is_positive=true
-    
-    single_multi_img_input  code_name=(single_multi_img_input)  visible_name=(single_multi_img_input)  content_min_num_needed=1
+    go minHeight=120 preferredHeight=120 flexibleWidth=1
+       
+    single_multi_img_input  code_name=(single_multi_img_input)  visible_name=(single_multi_img_input)  content_min_num_needed=(make_meshes_and_tex:1, retexture:0 )
     go minHeight=140 preferredHeight=140 flexibleWidth=1
-        hgroup  rect.anchors=(0,0,0.5,1)  rect.offsetMax=(-4,0)  bg.color=(255,255,255,10)  bg.ppu=10
+        hgroup  rect.anchors=(0,0,0.5,1)  rect.offsetMax=(-4,0)  bg.color=(255,255,255,10)  bg.ppu=10 
             
             space minWidth=20  flexibleHeight=1  flexibleWidth=1
             slider  code_name=(ss_strength)  visible_name=(ss\nstrength)  min=0  max=10  default=3.5  flexibleHeight=1
@@ -30,9 +29,4 @@ vgroup padl=4 padr=4 spacing=8 flexibleWidth=1
             go rect.offsetMin=(2,0)  minHeight=55  preferredHeight=55  flexibleWidth=1  
                 int_horizontal  code_name=(seed)  visible_name=(seed)  min=-2147483647  max=2147483647  default=-1  as_seed=true  rect.minOffset=(2,0)
             space  minHeight=15  preferredHeight=15  flexibleWidth=1
-            toggle  code_name=(skip_videos)  visible_name=(skip videos)  default=true  minHeight=20  flexibleWidth=1
-            space  flexibleWidth=1  flexibleHeight=1
-    
-    go minHeight=58 preferredHeight=58 flexibleWidth=1
-        vgroup padt=6  padl=10  rect.anchors=(0,0,0.5,1)  rect.offsetMax=(-4,0)  bg.color=(255,255,255,10)  bg.ppu=10
-            toggle  code_name=(remove_bg)  visible_name=(remove bg)  default=true  minHeight=44  preferredHeight=44  flexibleWidth=1
+            space  flexibleWidth=1  flexibleHeight=7

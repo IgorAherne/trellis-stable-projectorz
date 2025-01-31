@@ -1,5 +1,7 @@
 import gc
+import json
 import logging
+import threading
 import time
 import traceback
 from typing import Dict, Optional, Literal, List, Union
@@ -27,7 +29,6 @@ from api_spz.core.models_pydantic import (
 # Trellis pipeline + utils
 from trellis.pipelines import TrellisImageTo3DPipeline
 from trellis.utils import render_utils, postprocessing_utils
-
 
 
 router = APIRouter()
@@ -651,33 +652,36 @@ async def resume_from_preview(
         generation_lock.release()
 
 
+
+
 @router.post("/generate", response_model=GenerationResponse)
 async def process_ui_generation_request(
     data: Dict
 ):
     """Process generation request from the UI panel and redirect to appropriate endpoint."""
+
     try:
         # Extract values from simplified input format
         arg = GenerationArgForm(
-            seed = int(data.get("seed",{}).get("value", 1)),
-            ss_guidance_strength   = data.get("ss_strength", {}).get("value", 7.5),
-            ss_sampling_steps      = int(data.get("ss_steps", {}).get("value", 12)),
-            slat_guidance_strength = data.get("slat_strength", {}).get("value", 3.0),
-            slat_sampling_steps = int(data.get("slat_steps", {}).get("value", 12)),
-            preview_resolution  = 512,  # default value
-            preview_frames      = 150,  # default value
-            preview_fps         = 20,   # default value
-            mesh_simplify_ratio = data.get("mesh_simplify", {}).get("value", 0.95),
-            texture_size        = int(data.get("texture_size", {}).get("value", 1024)),
+            seed = int(data.get("seed", 1)),
+            ss_guidance_strength = data.get("ss_strength", 7.5),
+            ss_sampling_steps = int(data.get("ss_steps", 12)),
+            slat_guidance_strength = data.get("slat_strength", 3.0),
+            slat_sampling_steps = int(data.get("slat_steps", 12)),
+            preview_resolution = 512,
+            preview_frames     = 150,
+            preview_fps        = 20,
+            mesh_simplify_ratio = data.get("mesh_simplify", 0.95),
+            texture_size = int(data.get("texture_size", 1024)),
             output_format = "glb"
         )
         # Get images from input
-        images_base64 = data.get("single_multi_img_input", {}).get("value", [])
+        images_base64 = data.get("single_multi_img_input", [])
         if not images_base64:
             raise HTTPException(status_code=400, detail="No images provided")
 
         # Decide whether to generate preview based on input
-        skip_videos = data.get("skip_videos", {}).get("value", True)
+        skip_videos = data.get("skip_videos", True)
 
         # for now always skip videos (StableProjectorz doesn't show them) - 20 Jan 2025
         response = await generate_multi_no_preview(
@@ -704,6 +708,17 @@ async def process_ui_generation_request(
     except Exception as e:
         logger.error(f"Error processing UI generation request: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+
+# for example:
+#   "make_meshes_and_tex",
+#   "retexture",
+#   "retexture_via_masks"  etc (see api-documentation.html)
+@router.get("/info/supported_operations")
+async def get_supported_operation_types():
+   return ["make_meshes_and_tex"]
+
 
 
 
