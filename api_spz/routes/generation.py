@@ -104,8 +104,9 @@ def _gen_3d_validate_params(file_or_files, b64_or_b64list, arg: GenerationArgFor
         raise HTTPException(status_code=400, detail="Slat guidance strength must be above 0 and <= 10")
     if not (15 < arg.preview_frames <= 1000):
         raise HTTPException(status_code=400, detail="Preview frames must be above 15 and <= 1000")
-    if not (0 < arg.mesh_simplify_ratio <= 1):
-        raise HTTPException(status_code=400, detail="mesh_simplify_ratio must be between 0 and 1")
+    if not (0 < arg.mesh_simplify_ratio <= 100):  # Change upper bound to 100
+        raise HTTPException(status_code=400, detail="mesh_simplify_ratio must be between 0 and 1, or between 0 and 100")
+
     if arg.output_format not in ["glb", "gltf"]:
         raise HTTPException(status_code=400, detail="Unsupported output format")
 
@@ -244,8 +245,18 @@ async def _run_pipeline_generate_previews(outputs, resolution:int, preview_frame
     await asyncio.to_thread(worker)
 
 
+# Before using mesh_simplify_ratio in pipeline calls:
+def normalize_meshSimplify_ratio(ratio: float) -> float:
+    """Normalize mesh_simplify_ratio to [0,1] range"""
+    if ratio > 0.999:  # Detect [0,100] range
+        return ratio / 100.0
+    return ratio
+
+
 async def _run_pipeline_generate_glb(outputs, mesh_simplify_ratio: float, texture_size: int):
     """Generate the final GLB model in a thread."""
+    mesh_simplify_ratio = normalize_meshSimplify_ratio(mesh_simplify_ratio)
+
     def worker():
         torch.cuda.empty_cache()
         gc.collect()
@@ -447,18 +458,7 @@ async def generate_multi_no_preview(
         update_current_generation(progress=50, message="3D structure generated", outputs=outputs)
 
         # 2) Generate final GLB
-        update_current_generation(progress=70, message="Generating GLB file...")
-        def worker_glb():
-            glb = postprocessing_utils.to_glb(
-                outputs["gaussian"][0],
-                outputs["mesh"][0],
-                simplify=arg.mesh_simplify_ratio,
-                texture_size=arg.texture_size,
-            )
-            model_path = file_manager.get_temp_path("model.glb")
-            glb.export(str(model_path))
-
-        await asyncio.to_thread(worker_glb)
+        await _run_pipeline_generate_glb(outputs, arg.mesh_simplify_ratio, arg.texture_size)
 
         # Done
         update_current_generation(status=TaskStatus.COMPLETE, progress=100, message="Generation complete")

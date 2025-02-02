@@ -2,31 +2,35 @@ vgroup padl=4 padr=4 spacing=8 flexibleWidth=1
     go minHeight=120 preferredHeight=120 flexibleWidth=1
        
     single_multi_img_input  code_name=(single_multi_img_input)  visible_name=(single_multi_img_input)  content_min_num_needed=(make_meshes_and_tex:1, retexture:0 )
+    
     go minHeight=140 preferredHeight=140 flexibleWidth=1
-        hgroup  rect.anchors=(0,0,0.5,1)  rect.offsetMax=(-4,0)  bg.color=(255,255,255,10)  bg.ppu=10 
+        hgroup spacing=8
+            hgroup bg.color=(255,255,255,10) bg.ppu=10 flexibleWidth=1
+                space minWidth=20  flexibleHeight=1  flexibleWidth=1
+                slider  code_name=(ss_strength)  visible_name=(ss\nstrength)  min=0  max=10  default=4  flexibleHeight=1
+                space  minWidth=20  preferredWidth=30  flexibleHeight=1
+                slider  code_name=(ss_steps)  visible_name=(ss\nsteps)  min=1  max=50  default=12  flexibleHeight=1
+                space  minWidth=20   flexibleHeight=1  flexibleWidth=1
             
-            space minWidth=20  flexibleHeight=1  flexibleWidth=1
-            slider  code_name=(ss_strength)  visible_name=(ss\nstrength)  min=0  max=10  default=3.5  flexibleHeight=1
-            space  minWidth=20  preferredWidth=30  flexibleHeight=1
-            slider  code_name=(ss_steps)  visible_name=(ss\nsteps)  min=1  max=50  default=12  flexibleHeight=1
-            space  minWidth=20   flexibleHeight=1  flexibleWidth=1
-        hgroup  rect.anchors=(0.5,0,1,1)  rect.offsetMin=(4,0)  bg.color=(255,255,255,10)  bg.ppu=10
-            space  minWidth=20  flexibleHeight=1  flexibleWidth=1
-            slider  code_name=(slat_strength)  visible_name=(slat\nstrength)  min=0  max=10  default=3.5  flexibleHeight=1
-            space  minWidth=20  preferredWidth=30  flexibleHeight=1
-            slider  code_name=(slat_steps)  visible_name=(slat\nsteps)  min=1  max=50  default=12  flexibleHeight=1
-            space  minWidth=20  flexibleHeight=1  flexibleWidth=1
+            hgroup bg.color=(255,255,255,10) bg.ppu=10 flexibleWidth=1
+                space  minWidth=20  flexibleHeight=1  flexibleWidth=1
+                slider  code_name=(slat_strength)  visible_name=(slat\nstrength)  min=0  max=10  default=4  flexibleHeight=1
+                space  minWidth=20  preferredWidth=30  flexibleHeight=1
+                slider  code_name=(slat_steps)  visible_name=(slat\nsteps)  min=1  max=50  default=12  flexibleHeight=1
+                space  minWidth=20  flexibleHeight=1  flexibleWidth=1
+    
     go minHeight=140 preferredHeight=140 flexibleWidth=1
-        hgroup  rect.anchors=(0,0,0.5,1)  rect.offsetMax=(-4,0)  bg.color=(255,255,255,10)  bg.ppu=10
+        hgroup spacing=8
+            hgroup bg.color=(255,255,255,10) bg.ppu=10 flexibleWidth=1
+                space minWidth=20  flexibleHeight=1  flexibleWidth=1
+                slider  code_name=(mesh_simplify)  visible_name=(mesh\nsimplify)  min=0  max=100  default=95   show_n_decimals=0  flexibleHeight=1 
+                space  minWidth=20  preferredWidth=30  flexibleHeight=1
+                int_vertical  code_name=(texture_size)  visible_name=(texture\nsize)  min=255  max=8192  default=1024  flexibleHeight=1
+                space  minWidth=20   flexibleHeight=1  flexibleWidth=1
             
-            space minWidth=20  flexibleHeight=1  flexibleWidth=1
-            slider  code_name=(mesh_simplify)  visible_name=(mesh\nsimplify)  min=0.0  max=1.0  default=0.9  show_n_decimals=2  flexibleHeight=1 
-            space  minWidth=20  preferredWidth=30  flexibleHeight=1
-            int_vertical  code_name=(texture_size)  visible_name=(texture\nsize)  min=255  max=8192  default=1024  flexibleHeight=1
-            space  minWidth=20   flexibleHeight=1  flexibleWidth=1
-        vgroup  padl=12  rect.anchors=(0.5,0,1,1)  rect.offsetMin=(4,0)  bg.color=(255,255,255,10)  bg.ppu=10
-            space  flexibleHeight=1  flexibleWidth=1
-            go rect.offsetMin=(2,0)  minHeight=55  preferredHeight=55  flexibleWidth=1  
-                int_horizontal  code_name=(seed)  visible_name=(seed)  min=-2147483647  max=2147483647  default=-1  as_seed=true  rect.minOffset=(2,0)
-            space  minHeight=15  preferredHeight=15  flexibleWidth=1
-            space  flexibleWidth=1  flexibleHeight=7
+            vgroup  padl=12 bg.color=(255,255,255,10) bg.ppu=10 flexibleWidth=1 minWidth=208
+                space  flexibleHeight=1  flexibleWidth=1
+                go rect.offsetMin=(2,0)  minHeight=55  preferredHeight=55  flexibleWidth=1  
+                    int_horizontal  code_name=(seed)  visible_name=(seed)  min=-2147483647  max=2147483647  default=-1  as_seed=true  rect.minOffset=(2,0)
+                space  minHeight=15  preferredHeight=15  flexibleWidth=1
+                space  flexibleWidth=1  flexibleHeight=7
