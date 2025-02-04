@@ -230,9 +230,10 @@ def postprocess_mesh(
     if verbose:
         tqdm.write(f'Before postprocess: {vertices.shape[0]} vertices, {faces.shape[0]} faces')
 
+    vertices = vertices.astype(np.float32) #pipeline can return half-precision, so cast to float32 else pv.PolyData() or torch.rasterize_triangle_faces will complain
+
     # Simplify
     if simplify and simplify_ratio > 0:
-        vertices = vertices.astype(np.float32) #pipeline can return half-precision, so cast to float32 else pv.PolyData() will complain
         mesh = pv.PolyData(vertices, np.concatenate([np.full((faces.shape[0], 1), 3), faces], axis=1))
         mesh = mesh.decimate(simplify_ratio, progress_bar=verbose)
         vertices, faces = mesh.points, mesh.faces.reshape(-1, 4)[:, 1:]
