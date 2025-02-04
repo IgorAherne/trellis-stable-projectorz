@@ -104,7 +104,7 @@ def _gen_3d_validate_params(file_or_files, b64_or_b64list, arg: GenerationArgFor
         raise HTTPException(status_code=400, detail="Slat guidance strength must be above 0 and <= 10")
     if not (15 < arg.preview_frames <= 1000):
         raise HTTPException(status_code=400, detail="Preview frames must be above 15 and <= 1000")
-    if not (0 < arg.mesh_simplify_ratio <= 100):  # Change upper bound to 100
+    if not (0 <= arg.mesh_simplify_ratio <= 100):  # Change upper bound to 100
         raise HTTPException(status_code=400, detail="mesh_simplify_ratio must be between 0 and 1, or between 0 and 100")
 
     if arg.output_format not in ["glb", "gltf"]:
