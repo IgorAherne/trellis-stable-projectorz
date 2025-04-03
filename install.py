@@ -188,8 +188,8 @@ def install_dependencies():
 
         packages_cuda128 = [
             ("pip install -r requirements.txt", "Installing basic dependencies"),
-            (f"pip install --pre torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/nightly/cu128", "Installing PyTorch with CUDA 12.8"),
             (f"pip install flash-attn"), # no xformers for the newer pytorch
+            (f"pip install --pre torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/nightly/cu128", "Installing PyTorch with CUDA 12.8"),
             (f"pip install huggingface_hub", "Installing huggingface_hub"),
             ("pip install git+https://github.com/EasternJournalist/utils3d.git@9a4eb15e4021b67b12c460c7057d642626897ec8", "Installing utils3d"),
             ("pip install kaolin==0.17.0 -f https://nvidia-kaolin.s3.us-east-2.amazonaws.com/torch-2.1.2_cu118.html", "Installing Kaolin"),
