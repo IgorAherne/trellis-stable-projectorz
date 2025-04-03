@@ -192,8 +192,8 @@ def install_dependencies():
             (f"pip install flash-attn"), # no xformers for the newer pytorch
             (f"pip install huggingface_hub", "Installing huggingface_hub"),
             ("pip install git+https://github.com/EasternJournalist/utils3d.git@9a4eb15e4021b67b12c460c7057d642626897ec8", "Installing utils3d"),
-            ("pip install kaolin==0.17.0 -f https://nvidia-kaolin.s3.us-east-2.amazonaws.com/torch-2.1.2_cu118.html", "Installing Kaolin"),
-            ("pip install spconv-cu118==2.3.6", "Installing spconv"),
+            ("pip install kaolin", "Installing Kaolin"),
+            ("pip install pip install spconv-cu120", "Installing spconv"),
         ]
         
         # Local wheel files
