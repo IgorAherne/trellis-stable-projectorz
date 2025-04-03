@@ -117,6 +117,7 @@ async def lifespan(app: FastAPI):
     print('')
     logger.info(f"Trellis API version {code_version}")
     logger.info(f"Trellis API Server is active and listening on {cmd_args.ip}:{cmd_args.port}")
+    logger.info(f"In StableProjectorz, enter the 3D mode, click on connection icon and enter it into IP + Port.")
     print('')
     yield
     state.cleanup()#shutdown
