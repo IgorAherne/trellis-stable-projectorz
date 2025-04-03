@@ -1,7 +1,14 @@
 import os
 import sys
 sys.path.append(os.getcwd())
-os.environ['ATTN_BACKEND'] = 'xformers'
+
+
+try: # Try to import xformers, or use the faster one (flash-attn) if they weren't installed
+   import xformers
+   os.environ['ATTN_BACKEND'] = 'xformers'
+except ImportError:
+   os.environ['ATTN_BACKEND'] = 'flash-attn'
+
 os.environ['SPCONV_ALGO'] = 'native' 
 
 import gradio as gr
