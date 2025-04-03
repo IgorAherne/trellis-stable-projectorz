@@ -438,5 +438,5 @@ def initialize_pipeline(precision="full"):
 if __name__ == "__main__":
     initialize_pipeline(cmd_args.precision)
     print(f'')
-    print(f"After launched, open a browser and enter {cmd_args.ip}:{cmd_args.port} into url, as if it was a website:")
+    print(f"After launched, open a browser and enter 127.0.0.1:7860 (or whatever IP and port is shown below) into url, as if it was a website:")
     demo.launch()
