@@ -437,5 +437,6 @@ def initialize_pipeline(precision="full"):
 # Launch the Gradio app
 if __name__ == "__main__":
     initialize_pipeline(cmd_args.precision)
+    logger.info(f'')
+    logger.info(f"After launched, open a browser and enter {cmd_args.ip}:{cmd_args.port} into url, as if it was a website:")
     demo.launch()
-    logger.info(f"Open a browser and enter {cmd_args.ip}:{cmd_args.port} into url, as if it was a website.")
