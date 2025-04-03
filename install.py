@@ -15,6 +15,51 @@ class InstallationError(Exception):
     """Custom exception for installation failures"""
     pass
 
+
+def is_rtx5000_or_newer():
+    """
+    Detect if GPU is RTX 5000 series or newer based on compute capability.
+    Returns True if compute capability >= 9.0, False otherwise.
+    """
+    try:
+        # Run nvidia-smi to get compute capability
+        result = subprocess.run(
+            'nvidia-smi --query-gpu=name,compute_cap --format=csv,noheader', 
+            shell=True, 
+            capture_output=True, 
+            text=True
+        )
+        if result.returncode != 0:
+            print("Warning: Could not detect NVIDIA GPU. Defaulting to standard installation.")
+            return False
+            
+        gpu_info = result.stdout.strip().split(',', 1)
+        if len(gpu_info) < 2:
+            print(f"Unexpected GPU info format: {result.stdout}")
+            return False
+            
+        gpu_name = gpu_info[0].strip()
+        # Parse compute capability
+        try:
+            compute_cap = float(gpu_info[1].strip())
+        except ValueError:
+            print(f"Could not parse compute capability: {gpu_info[1]}")
+            return False
+        
+        # RTX 5000 series has compute capability 9.0 or higher
+        is_rtx5000_plus = compute_cap >= 9.0
+        
+        print(f"Detected GPU: {gpu_name}")
+        print(f"Compute capability: {compute_cap}")
+        print(f"RTX 5000 series or newer: {'Yes' if is_rtx5000_plus else 'No'}")
+        
+        return is_rtx5000_plus
+            
+    except Exception as e:
+        print(f"Error detecting GPU: {str(e)}. Defaulting to standard installation.")
+        return False
+
+
 def check_connectivity(url: str = "https://pytorch.org", timeout: int = 5) -> Tuple[bool, Optional[str]]:
     """
     Check internet connectivity and return more detailed error information.
@@ -131,10 +176,21 @@ def install_dependencies():
             sys.exit(1)
         
         # List of packages to install with pip
-        packages = [
+        packages_cuda124 = [
             ("pip install -r requirements.txt", "Installing basic dependencies"),
             (f"pip install torch==2.1.2 torchvision==0.16.2 torchaudio==2.1.2 --index-url https://download.pytorch.org/whl/cu118", "Installing PyTorch 2.1.2 with CUDA 11.8"),
             ("pip install xformers==0.0.23.post1 --index-url https://download.pytorch.org/whl/cu118", "Installing xformers"),
+            (f"pip install huggingface_hub", "Installing huggingface_hub"),
+            ("pip install git+https://github.com/EasternJournalist/utils3d.git@9a4eb15e4021b67b12c460c7057d642626897ec8", "Installing utils3d"),
+            ("pip install kaolin==0.17.0 -f https://nvidia-kaolin.s3.us-east-2.amazonaws.com/torch-2.1.2_cu118.html", "Installing Kaolin"),
+            ("pip install spconv-cu118==2.3.6", "Installing spconv"),
+        ]
+
+        packages_cuda128 = [
+            ("pip install -r requirements.txt", "Installing basic dependencies"),
+            (f"pip install --pre torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/nightly/cu128", "Installing PyTorch with CUDA 12.8"),
+            ("pip install xformers==0.0.23.post1 --index-url https://download.pytorch.org/whl/cu118", "Installing xformers"),
+            (f"pip install huggingface_hub", "Installing huggingface_hub"),
             ("pip install git+https://github.com/EasternJournalist/utils3d.git@9a4eb15e4021b67b12c460c7057d642626897ec8", "Installing utils3d"),
             ("pip install kaolin==0.17.0 -f https://nvidia-kaolin.s3.us-east-2.amazonaws.com/torch-2.1.2_cu118.html", "Installing Kaolin"),
             ("pip install spconv-cu118==2.3.6", "Installing spconv"),
@@ -146,6 +202,8 @@ def install_dependencies():
             "diffoctreerast": "whl/diffoctreerast-0.0.0-cp311-cp311-win_amd64.whl",
             "diff_gaussian": "whl/diff_gaussian_rasterization-0.0.0-cp311-cp311-win_amd64.whl"
         }
+
+        packages    = packages_cuda128 if is_rtx5000_or_newer() else packages_cuda124
         
         # Install packages (with retry)
         for cmd, desc in packages:
