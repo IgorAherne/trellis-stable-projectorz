@@ -93,7 +93,13 @@ logger.info("Touching this window will pause it.  If it happens, click inside it
 print('')
 
 # Configure environment, BEFORE including trellis pipeline
-os.environ['ATTN_BACKEND'] = 'xformers'    # or 'flash-attn'
+
+try: # Try to import xformers, or use the faster one (flash-attn) if they weren't installed
+   import xformers
+   os.environ['ATTN_BACKEND'] = 'xformers'
+except ImportError:
+   os.environ['ATTN_BACKEND'] = 'flash-attn'
+
 os.environ['SPCONV_ALGO'] = 'native'       # or 'auto'
 
 # IMPORTING FROM state_manage AND INITIALIZE THE TRELLIS PIPELINE,
@@ -117,7 +123,7 @@ async def lifespan(app: FastAPI):
     print('')
     logger.info(f"Trellis API version {code_version}")
     logger.info(f"Trellis API Server is active and listening on {cmd_args.ip}:{cmd_args.port}")
-    logger.info(f"In StableProjectorz, enter the 3D mode, click on connection icon and enter it into IP + Port.")
+    logger.info(f"Now in StableProjectorz, enter the 3D mode, click on the connection button and enter {cmd_args.ip}:{cmd_args.port}")
     print('')
     yield
     state.cleanup()#shutdown
