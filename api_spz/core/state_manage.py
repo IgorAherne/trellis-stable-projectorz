@@ -15,7 +15,7 @@ class TrellisState:
     # Define a function to initialize the pipeline
     def initialize_pipeline(self, precision="full"):
         global pipeline
-        pipeline = TrellisImageTo3DPipeline.from_pretrained("JeffreyXiang/TRELLIS-image-large")
+        pipeline = TrellisImageTo3DPipeline.from_pretrained("jetx/TRELLIS-image-large")
         # Apply precision settings. Reduce memory usage at the cost of numerical precision:
         print('')
         print(f"used precision: '{precision}'.  Loading...")

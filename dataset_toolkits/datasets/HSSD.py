@@ -14,7 +14,7 @@ def add_args(parser: argparse.ArgumentParser):
 
 
 def get_metadata(**kwargs):
-    metadata = pd.read_csv("hf://datasets/JeffreyXiang/TRELLIS-500K/HSSD.csv")
+    metadata = pd.read_csv("hf://datasets/jetx/TRELLIS-500K/HSSD.csv")
     return metadata
         
 

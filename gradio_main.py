@@ -427,7 +427,7 @@ with gr.Blocks(delete_cache=(600, 600)) as demo:
 # Define a function to initialize the pipeline
 def initialize_pipeline(precision="full"):
     global pipeline
-    pipeline = TrellisImageTo3DPipeline.from_pretrained("JeffreyXiang/TRELLIS-image-large")
+    pipeline = TrellisImageTo3DPipeline.from_pretrained("jetx/TRELLIS-image-large")
     # Apply precision settings. Reduce memory usage at the cost of numerical precision:
     print('')
     print(f"used precision: '{precision}'.  Loading...")

@@ -32,7 +32,7 @@ I've changed it to use `int32` instead of `int64`, reducing memory by half durin
 <h1 align="center">Structured 3D Latents<br>for Scalable and Versatile 3D Generation</h1>
 <p align="center"><a href="https://arxiv.org/abs/2412.01506"><img src='https://img.shields.io/badge/arXiv-Paper-red?logo=arxiv&logoColor=white' alt='arXiv'></a>
 <a href='https://trellis3d.github.io'><img src='https://img.shields.io/badge/Project_Page-Website-green?logo=googlechrome&logoColor=white' alt='Project Page'></a>
-<a href='https://huggingface.co/spaces/JeffreyXiang/TRELLIS'><img src='https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Live_Demo-blue'></a>
+<a href='https://huggingface.co/spaces/jetx/TRELLIS'><img src='https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Live_Demo-blue'></a>
 </p>
 <p align="center"><img src="assets/teaser.png" width="100%"></p>
 
@@ -120,14 +120,14 @@ We provide the following pretrained models:
 
 | Model | Description | #Params | Download |
 | --- | --- | --- | --- |
-| TRELLIS-image-large | Large image-to-3D model | 1.2B | [Download](https://huggingface.co/JeffreyXiang/TRELLIS-image-large) |
+| TRELLIS-image-large | Large image-to-3D model | 1.2B | [Download](https://huggingface.co/jetx/TRELLIS-image-large) |
 | TRELLIS-text-base | Base text-to-3D model | 342M | Coming Soon |
 | TRELLIS-text-large | Large text-to-3D model | 1.1B | Coming Soon |
 | TRELLIS-text-xlarge | Extra-large text-to-3D model | 2.0B | Coming Soon |
 
 The models are hosted on Hugging Face. You can directly load the models with their repository names in the code:
 ```python
-TrellisImageTo3DPipeline.from_pretrained("JeffreyXiang/TRELLIS-image-large")
+TrellisImageTo3DPipeline.from_pretrained("jetx/TRELLIS-image-large")
 ```
 
 If you prefer loading the model from local, you can download the model files from the links above and load the model with the folder path (folder structure should be maintained):
@@ -155,7 +155,7 @@ from trellis.pipelines import TrellisImageTo3DPipeline
 from trellis.utils import render_utils, postprocessing_utils
 
 # Load a pipeline from a model folder or a Hugging Face model hub.
-pipeline = TrellisImageTo3DPipeline.from_pretrained("JeffreyXiang/TRELLIS-image-large")
+pipeline = TrellisImageTo3DPipeline.from_pretrained("jetx/TRELLIS-image-large")
 pipeline.cuda()
 
 # Load an image
@@ -224,7 +224,7 @@ python app.py
 
 Then, you can access the demo at the address shown in the terminal.
 
-***The web demo is also available on [Hugging Face Spaces](https://huggingface.co/spaces/JeffreyXiang/TRELLIS)!***
+***The web demo is also available on [Hugging Face Spaces](https://huggingface.co/spaces/jetx/TRELLIS)!***
 
 
 <!-- Dataset -->

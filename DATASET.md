@@ -24,7 +24,7 @@ The following table summarizes the dataset's filtering and composition:
 
 The dataset is hosted on Hugging Face Datasets. You can preview the dataset at
 
-[https://huggingface.co/datasets/JeffreyXiang/TRELLIS-500K](https://huggingface.co/datasets/JeffreyXiang/TRELLIS-500K)
+[https://huggingface.co/datasets/jetx/TRELLIS-500K](https://huggingface.co/datasets/jetx/TRELLIS-500K)
 
 There is no need to download the csv files manually. We provide toolkits to load and prepare the dataset.
 
