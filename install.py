@@ -174,36 +174,26 @@ def install_dependencies():
             print(f"Error: Internet connectivity check failed: {error_msg}")
             print("Please check your connection and try again.")
             sys.exit(1)
-        
-        # List of packages to install with pip
-        packages_cuda124 = [
-            ("pip install -r requirements.txt", "Installing basic dependencies"),
-            (f"pip install torch==2.1.2 torchvision==0.16.2 torchaudio==2.1.2 --index-url https://download.pytorch.org/whl/cu118", "Installing PyTorch 2.1.2 with CUDA 11.8"),
-            ("pip install xformers==0.0.23.post1 --index-url https://download.pytorch.org/whl/cu118", "Installing xformers"),
-            (f"pip install huggingface_hub", "Installing huggingface_hub"),
-            ("pip install git+https://github.com/EasternJournalist/utils3d.git@9a4eb15e4021b67b12c460c7057d642626897ec8", "Installing utils3d"),
-            ("pip install kaolin==0.17.0 -f https://nvidia-kaolin.s3.us-east-2.amazonaws.com/torch-2.1.2_cu118.html", "Installing Kaolin"),
-            ("pip install spconv-cu118==2.3.6", "Installing spconv"),
-        ]
 
         packages_cuda128 = [
+            ("pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128", "Installing PyTorch with CUDA 12.8"),
             ("pip install -r requirements.txt", "Installing basic dependencies"),
-            (f"pip install --pre torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/nightly/cu128", "Installing PyTorch with CUDA 12.8"),
-            (f"pip install flash-attn"), # no xformers for the newer pytorch
-            (f"pip install huggingface_hub", "Installing huggingface_hub"),
+            ("pip install -U xformers --index-url https://download.pytorch.org/whl/cu128", "Installing xFormers"),
+            ("pip install huggingface_hub", "Installing huggingface_hub"),
             ("pip install git+https://github.com/EasternJournalist/utils3d.git@9a4eb15e4021b67b12c460c7057d642626897ec8", "Installing utils3d"),
-            ("pip install kaolin", "Installing Kaolin"),
-            ("pip install pip install spconv-cu120", "Installing spconv"),
         ]
         
-        # Local wheel files
+        # Local wheel files 
         wheel_files = {
+            "cumm_cu128": "whl/cumm_cu128-0.7.13-cp311-cp311-win_amd64.whl",
+            "spconv_cu128": "whl/spconv_cu128-2.3.8-cp311-cp311-win_amd64.whl",
             "nvdiffrast": "whl/nvdiffrast-0.3.3-cp311-cp311-win_amd64.whl",
             "diffoctreerast": "whl/diffoctreerast-0.0.0-cp311-cp311-win_amd64.whl",
-            "diff_gaussian": "whl/diff_gaussian_rasterization-0.0.0-cp311-cp311-win_amd64.whl"
+            "diff_gaussian": "whl/diff_gaussian_rasterization-0.0.0-cp311-cp311-win_amd64.whl",
+            "kaolin": "whl/kaolin-0.17.0-cp311-cp311-win_amd64.whl"
         }
 
-        packages    = packages_cuda128 if is_rtx5000_or_newer() else packages_cuda124
+        packages    = packages_cuda128  #commented out, just using cuda 12.8:   if is_rtx5000_or_newer() else packages_cuda124
         
         # Install packages (with retry)
         for cmd, desc in packages:
